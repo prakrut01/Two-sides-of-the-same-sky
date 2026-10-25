@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two Sides of the Same Sky</title>
+<style>
+:root{--bg:#f7edf5;--card:#fff;--ink:#2d2347;--mut:#7a6d96;--acc:#7b5cd6;--acc2:#e58fae;--ln:#e3d6ee;--star:#e0a526;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f132d;--card:#1b2147;--ink:#eee9ff;--mut:#a79fd0;--acc:#a28bff;--acc2:#f2a6c0;--ln:#2c3466;--star:#ffd666}}
+:root[data-theme="dark"]{--bg:#0f132d;--card:#1b2147;--ink:#eee9ff;--mut:#a79fd0;--acc:#a28bff;--acc2:#f2a6c0;--ln:#2c3466;--star:#ffd666}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100%}
+main{max-width:560px;margin:0 auto;padding:14px}
+h1{font:600 22px/1.2 Georgia,serif;margin:6px 0 2px;text-align:center}
+h3{margin:12px 0 4px}
+.mut{color:var(--mut);font-size:14px;margin:4px 0}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:14px;margin:10px 0}
+button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:8px 12px;cursor:pointer}
+button.pri{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1;padding:8px 2px;font-size:14px}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+#who{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--mut);align-items:center}
+.ev{background:var(--ln);border-radius:12px;padding:8px 12px;font-size:14px}
+.g{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:320px;margin:10px auto}
+.c{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--ln);border-radius:12px;background:var(--bg);color:var(--mut);padding:0}
+.g .c{font-size:15px}button.c.on,.c.on{background:var(--acc);color:#fff;font-size:22px}.c.st{background:var(--acc2)}
+.sv{width:100%;max-width:320px;display:block;margin:auto;background:var(--bg);border-radius:14px}
+.lb{font-size:9px;fill:var(--mut);text-anchor:middle}.stx{font-size:26px;text-anchor:middle}
+.ln{fill:none;stroke:var(--acc);stroke-width:2;stroke-dasharray:4 3}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.tile{padding:10px 14px;border:1px solid var(--ln);border-radius:12px;background:var(--bg);font-size:22px;min-width:54px;text-align:center}
+.pad{display:flex;gap:8px;justify-content:center;margin:10px 0}.pad button{font-size:22px;min-width:54px}
+.msg{text-align:center;font-weight:600}.win{text-align:center;font-size:18px;color:var(--acc);font-weight:700}
+textarea,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--ln);border-radius:12px;padding:8px}
+.note{padding:8px 10px;border-radius:12px;background:var(--bg);margin:6px 0}.note small{color:var(--mut)}
+.note.me{background:var(--ln)}
+.items{display:flex;flex-wrap:wrap;gap:8px}.items button{font-size:22px;min-width:52px}.items button.on{border-color:var(--acc);background:var(--ln)}
+.lock{opacity:.45;font-size:13px!important}
+#toast{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 14px;text-align:center;z-index:5}
+[hidden]{display:none!important}
+</style></head><body><main>
+<h1>Two Sides of the Same Sky</h1>
+<p class="mut" style="text-align:center">a little world only the two of you can grow</p>
+<div id="who" class="card">Connecting to the sky…</div>
+<div id="seat" class="card" hidden></div>
+<nav class="tabs" id="tabs"></nav>
+<section id="p-play"></section>
+<section id="p-home" hidden></section>
+<section id="p-letters" hidden>
+ <div class="card"><textarea id="ntxt" rows="3" placeholder="Write a letter for your partner to find…"></textarea>
+ <div class="row"><button class="pri" id="nsend">Send letter 💌</button></div>
+ <div class="row" id="gifts"></div></div>
+ <div id="notes"></div>
+</section>
+<section id="p-mem" hidden></section>
+<div id="toast" hidden></div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// ====== PASTE YOUR FIREBASE CONFIG HERE (Firebase console > Project settings > Your apps) ======
+const firebaseConfig = {
+  apiKey: "AIzaSyCYxC65EoCSzOqva1R6P-U-LhxW9WGzxJg",
+  authDomain: "two-sides-of-the-same-sky.firebaseapp.com",
+  projectId: "two-sides-of-the-same-sky",
+  storageBucket: "two-sides-of-the-same-sky.firebasestorage.app",
+  messagingSenderId: "153999119596",
+  appId: "1:153999119596:web:788cd8f0486e8a72cb81c9"
+};
+// ================================================================================================
+const $=s=>document.querySelector(s);
+const E=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.textContent=h;return e};
+const rnd=n=>Math.floor(Math.random()*n),shuf=a=>a.slice().sort(()=>Math.random()-.5);
+const co=i=>'ABCDE'[i%5]+(Math.floor(i/5)+1);
+const NAME={A:'Moon 🌙',B:'Sun ☀️'},other=r=>r==='A'?'B':'A';
+const wk=Math.floor(Date.now()/6048e5);
+const EVENTS=[
+ {n:'Meteor Week',d:'Lantern Locks pay double stars.',t:'cipher'},
+ {n:'Aurora Week',d:'Constellations pay double stars.',t:'sky'},
+ {n:'Trade-Wind Week',d:'Airship Crossings pay double stars.',t:'ship'},
+ {n:'Full Moon Week',d:'Every puzzle pays double stars.',t:'*'}];
+const ev=EVENTS[wk%4];
+const SY=['🌙','⭐','☀️','🌸','🦋','🍃'];
+const ITEMS=[['🪴',1],['🕯️',2],['🧸',3],['🌷',5],['🪁',7],['📚',9],['🎐',12],['🛋️',15],['🔭',18],['🌈',22]];
+const PETS=[['🐇',4],['🦊',8],['🦉',12],['🐉',16],['🦋',20],['🐋',25]];
+const PROMPTS=['The first thing I remember thinking about you…','A tiny moment from today I wish you’d seen…','A song that sounds like us…','Where I’d love us to be sitting together next year…','Something you do that makes me feel close from far away…','A smell or taste that reminds me of you…','The silliest thing we’ve laughed about…','One thing I’m looking forward to doing with you…'];
+const ROLES={
+ sky:{t:'Constellation',s:'Stargazer 🔭',d:'Mirror-keeper 🪞',sh:'Only you can see the pattern. Describe it — shapes, positions, the labels on the grid.',dh:'You can’t see the pattern! Ask your partner, tap the stars they describe, then press Check.'},
+ ship:{t:'Airship Crossing',s:'Weather-watcher ⛅',d:'Airship pilot 🎈',sh:'You can see the storms. Guide the airship from A1 to 🏠 without hitting one.',dh:'You steer, but you can’t see the storms. Ask for directions!'},
+ cipher:{t:'Lantern Lock',s:'Lantern-reader 📜',d:'Lock-keeper 🏮',sh:'You hold the key: which symbol means which number. Your partner sees the code.',dh:'Your lock shows symbols. Ask what number each one is, then enter the code.'}};
+let db,uid,me=null,S=null,P=null,notes=[],mems={},pres={},tab='play';
+
+const toast=m=>{const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,4000)};
+const w=async f=>{try{await f()}catch(e){toast(e&&e.code==='not_granted'?'You need Contributor access to play — ask the owner to grant it.':'Hiccup: '+((e&&e.message)||e))}};
+const puz=d=>w(()=>db.doc('puzzle/cur').update(d));
+const busy=el=>el.contains(document.activeElement)&&/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+const btn=(p,t,f,c)=>{const b=E('button',c||'pri',t);b.onclick=f;p.append(b);return b};
+
+function mk(type,seer){
+ const b={type,seer,n:(P&&P.n||0)+1,done:false,msg:'',bumps:0};
+ if(type==='sky')return{...b,target:shuf([...Array(25).keys()]).slice(0,5),lit:[]};
+ if(type==='ship'){let r=0,c=0,path=[0];
+  while(r<4||c<4){if(r<4&&(c===4||rnd(2)))r++;else c++;path.push(r*5+c)}
+  return{...b,storms:shuf([...Array(25).keys()].filter(i=>!path.includes(i))).slice(0,8),pos:0}}
+ return{...b,sy:shuf(SY).slice(0,4),code:[...Array(4)].map(()=>rnd(4)),ent:[]};
+}
+const newP=()=>{const ts=['sky','ship','cipher'].filter(t=>!P||t!==P.type);
+ w(()=>db.doc('puzzle/cur').set(mk(ts[rnd(ts.length)],P?other(P.seer):(rnd(2)?'A':'B'))))};
+const solve=(x={})=>w(async()=>{
+ const r=(ev.t==='*'||ev.t===P.type)?2:1;
+ await db.doc('puzzle/cur').update({...x,done:true,reward:r,msg:'🎉 Solved together!'});
+ await db.doc('sky/state').update({stars:(S.stars||0)+r,solved:(S.solved||0)+1})});
+
+const V={
+ sky(b,seer){
+  if(seer||P.done){
+   const pts=P.target.map(i=>[i%5*50+25,Math.floor(i/5)*50+25]);
+   b.innerHTML=`<svg viewBox="0 0 250 250" class="sv">${[...Array(25).keys()].map(i=>`<text x="${i%5*50+25}" y="${Math.floor(i/5)*50+30}" class="lb">${co(i)}</text>`).join('')}<polyline class="ln" points="${pts.map(p=>p.join(',')).join(' ')}"/>${pts.map(p=>`<text class="stx" x="${p[0]}" y="${p[1]+9}">⭐</text>`).join('')}</svg>`;
+   return}
+  const g=E('div','g');
+  for(let i=0;i<25;i++){const on=P.lit.includes(i),c=E('button','c'+(on?' on':''),on?'⭐':co(i));
+   c.onclick=()=>puz({lit:on?P.lit.filter(x=>x!==i):[...P.lit,i]});g.append(c)}
+  b.append(g);
+  const r=E('div','row');
+  btn(r,'Check ✨',()=>{const ok=P.lit.filter(i=>P.target.includes(i)).length;
+   if(ok===5&&P.lit.length===5)solve();
+   else puz({msg:`${ok} of 5 stars are in the right place${P.lit.length>5?' (too many lit!)':''}.`})});
+  b.append(r)},
+ ship(b,seer){
+  const g=E('div','g'),rev=seer||P.done;
+  for(let i=0;i<25;i++){const s=P.storms.includes(i);
+   g.append(E('div','c'+(rev&&s?' st':''),i===P.pos?'🎈':i===24?'🏠':rev&&s?'⛈️':co(i)))}
+  b.append(g);
+  if(seer||P.done)return;
+  const pad=E('div','pad');
+  [['⬆️',-5],['⬅️',-1],['➡️',1],['⬇️',5]].forEach(([t,d])=>{
+   const bt=E('button',null,t);bt.onclick=()=>{
+    const r=Math.floor(P.pos/5),c=P.pos%5;
+    if((d===-5&&r===0)||(d===5&&r===4)||(d===-1&&c===0)||(d===1&&c===4))return;
+    const np=P.pos+d;
+    if(P.storms.includes(np))puz({pos:0,bumps:P.bumps+1,msg:'⛈️ A storm blew the airship back to the start! Try another way.'});
+    else if(np===24)solve({pos:np});else puz({pos:np,msg:''})};
+   pad.append(bt)});
+  b.append(pad)},
+ cipher(b,seer){
+  if(seer||P.done){const r=E('div','row');P.sy.forEach((s,i)=>r.append(E('div','tile',`${s} = ${i+1}`)));b.append(r);return}
+  const r=E('div','row');P.code.forEach(i=>r.append(E('div','tile',P.sy[i])));b.append(r);
+  const e=E('div','row');for(let k=0;k<4;k++)e.append(E('div','tile',P.ent[k]||'·'));b.append(e);
+  const pad=E('div','pad');
+  [1,2,3,4].forEach(d=>{const bt=E('button',null,d);bt.onclick=()=>{
+   const en=[...P.ent,d];
+   if(en.length<4)puz({ent:en,msg:''});
+   else if(en.every((x,k)=>x===P.code[k]+1))solve({ent:en});
+   else puz({ent:[],msg:'🏮 The lantern flickers… not quite. Try again together!'})};pad.append(bt)});
+  const u=E('button',null,'↺');u.onclick=()=>puz({ent:[]});pad.append(u);b.append(pad)}
+};
+
+function renderPlay(){
+ const el=$('#p-play');el.replaceChildren();
+ if(!me){el.append(E('p','mut','Pick your side of the sky above to begin.'));return}
+ el.append(E('div','ev',`✨ ${ev.n}: ${ev.d}`));
+ if(!P){const c=E('div','card');c.append(E('p',null,'Ready when you both are. Hop on a call or chat and start!'));btn(c,'Start our first puzzle',newP);el.append(c);return}
+ const T=ROLES[P.type],seer=P.seer===me,c=E('div','card');
+ c.append(E('h3',null,`Puzzle ${P.n} · ${T.t}`),E('p','mut',`You are the ${seer?T.s:T.d}. ${seer?T.sh:T.dh}`));
+ const box=E('div');c.append(box);V[P.type](box,seer);
+ if(P.msg)c.append(E('p','msg',P.msg));
+ if(P.done){c.append(E('p','win',`+${P.reward||1} ⭐ for your shared sky!`));const r=E('div','row');btn(r,'Next puzzle →',newP);c.append(r)}
+ el.append(c);
+}
+
+function renderHome(){
+ const el=$('#p-home');el.replaceChildren();
+ if(!S){el.append(E('p','mut','Your sky is waiting for its first star.'));return}
+ const n=S.stars||0,st=[...Array(Math.min(n,70)).keys()].map(i=>`<circle cx="${(i*97)%340+10}" cy="${(i*53)%100+10}" r="1.8" style="fill:var(--star)"/>`).join('');
+ const pets=PETS.filter(p=>n>=p[1]).map((p,i)=>`<text x="${115+i*26}" y="${112-Math.sin(i*1.1)*10}" font-size="20" text-anchor="middle">${p[0]}</text>`).join('');
+ const dec=r=>(S['decor'+r]||[]).map((d,i)=>`<text x="${r==='A'?22+i*17:210+i*17+30}" y="192" font-size="16">${d}</text>`).join('');
+ const c=E('div','card');
+ c.innerHTML=`<svg viewBox="0 0 360 200" class="sv">${st}<path d="M90 160 Q180 95 270 160" fill="none" stroke-width="5" stroke-dasharray="2 8" stroke-linecap="round" style="stroke:var(--acc2)"/>${pets}<text x="60" y="165" font-size="46" text-anchor="middle">🏠</text><text x="300" y="165" font-size="46" text-anchor="middle">🏡</text>${dec('A')}${dec('B')}<text x="60" y="14" class="lb" style="font-size:11px">Moon side 🌙</text><text x="300" y="14" class="lb" style="font-size:11px">Sun side ☀️</text></svg>`;
+ c.append(E('p','mut',`⭐ ${n} stars · ${S.solved||0} puzzles solved together`));
+ el.append(c);
+ const d=E('div','card');d.append(E('h3',null,'Decorate your side'),E('p','mut','Tap an unlocked item to place it on your side (tap again to remove).'));
+ const it=E('div','items'),mine=me?(S['decor'+me]||[]):[];
+ ITEMS.forEach(([e,at])=>{const un=n>=at,on=mine.includes(e),b=E('button',(un?'':'lock ')+(on?'on':''),un?e:`🔒 ${at}⭐`);
+  b.disabled=!un||!me;b.onclick=()=>w(()=>db.doc('sky/state').update({['decor'+me]:on?mine.filter(x=>x!==e):[...mine,e]}));it.append(b)});
+ d.append(it);
+ d.append(E('h3',null,'Sky creatures'));
+ const pr=E('div','items');PETS.forEach(([e,at])=>pr.append(E('button',n>=at?'':'lock',n>=at?e:`🔒 ${at}⭐`)));
+ d.append(pr);el.append(d);
+}
+
+function renderLetters(){
+ const el=$('#notes');el.replaceChildren();
+ if(!notes.length)el.append(E('p','mut','No letters yet. The first one is always the best.'));
+ notes.forEach(n=>{const d=E('div','note'+(n.from===me?' me':''));
+  const t=new Date(n.t);
+  d.append(E('div',null,n.text),E('small',null,`${n.from===me?'You':NAME[n.from]||'?'} · ${t.toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`));
+  el.append(d)});
+}
+const sendNote=text=>{if(!me||!text.trim())return;w(async()=>{await db.collection('notes').add({from:me,text:text.trim(),t:Date.now()});toast('Letter sent 💌')})};
+
+function renderMem(){
+ const el=$('#p-mem');if(busy(el))return;el.replaceChildren();
+ if(!me){el.append(E('p','mut','Pick your side first.'));return}
+ const lit=PROMPTS.filter((_,i)=>{const m=mems['p'+i];return m&&m.A&&m.B}).length;
+ el.append(E('p','mut',`Memory constellation: ${'⭐'.repeat(lit)}${'☆'.repeat(PROMPTS.length-lit)} — a star lights when you both answer. Answers stay hidden until then.`));
+ PROMPTS.forEach((p,i)=>{
+  const m=mems['p'+i]||{},c=E('div','card');c.append(E('b',null,p));
+  if(m.A&&m.B){c.append(E('div','note',`🌙 ${m.A}`),E('div','note',`☀️ ${m.B}`))}
+  else if(m[me])c.append(E('div','note me',`You: ${m[me]}`),E('p','mut','Waiting for your partner’s answer…'));
+  else{const inp=E('input');inp.type='text';inp.placeholder='Your answer…';c.append(inp);
+   const r=E('div','row');btn(r,'Save',()=>{const v=inp.value.trim();if(!v)return;
+    w(async()=>{const ref=db.doc('memories/p'+i);try{await ref.update({[me]:v})}catch(e){await ref.set({[me]:v})}})});c.append(r)}
+  el.append(c)})
+}
+
+function renderHead(){
+ const who=$('#who'),seat=$('#seat');
+ if(!db){return}
+ if(!S||!me){who.textContent=me?'':'Welcome, stargazer ✨';
+  const free=r=>!(S&&S['seat'+r]);
+  seat.hidden=false;seat.replaceChildren(E('p',null,'Which side of the sky is yours? Each of you picks a different one.'));
+  const r=E('div','row');
+  ['A','B'].forEach(k=>{btn(r,`I’m ${NAME[k]}${free(k)?'':' (taken – tap if that’s you)'}`,()=>claim(k),'pri')});
+  seat.append(r);
+  return}
+ seat.hidden=true;
+ const o=pres[other(me)],on=o&&Date.now()-o.t<50000;
+ who.replaceChildren(E('span',null,`You: ${NAME[me]}`),E('span',null,S['seat'+other(me)]?(on?'💚 Your partner is here now':'💤 Your partner is away — leave a letter!'):'⏳ Waiting for your partner to pick a side'));
+ const l=E('button',null,'swap sides');l.style.cssText='font-size:12px;padding:2px 8px';l.onclick=()=>w(()=>db.doc('sky/state').update({['seat'+me]:null}));who.append(l);
+}
+async function claim(k){
+ if(S&&S['seat'+k]&&!confirm('This side is already claimed. Is it really you (e.g. new browser)?'))return;
+ w(async()=>{const ref=db.doc('sky/state');
+  if(S)await ref.update({['seat'+k]:uid});
+  else await ref.set({stars:0,solved:0,decorA:[],decorB:[],seatA:null,seatB:null,['seat'+k]:uid})})
+}
+function render(){
+ me=S?(S.seatA===uid?'A':S.seatB===uid?'B':null):null;
+ renderHead();renderPlay();renderHome();renderLetters();renderMem();
+}
+function tabs(){
+ const t=$('#tabs');t.replaceChildren();
+ [['play','🧩 Play'],['home','🏡 Home'],['letters','💌 Letters'],['mem','✨ Memories']].forEach(([k,l])=>{
+  const b=E('button',tab===k?'on':'',l);b.onclick=()=>{tab=k;tabs();['play','home','letters','mem'].forEach(x=>$('#p-'+x).hidden=x!==k)};t.append(b)})
+}
+tabs();
+$('#nsend').onclick=()=>{sendNote($('#ntxt').value);$('#ntxt').value=''};
+['🌸 a flower','☕ a warm coffee','🌙 goodnight','🤗 a big hug'].forEach(g=>{const b=E('button',null,g.split(' ')[0]);b.title=g;b.onclick=()=>sendNote(`sent you ${g.split(' ').slice(1).join(' ')} ${g.split(' ')[0]}`);$('#gifts').append(b)});
+
+(async()=>{
+ try{
+  if(!window.firebase||FIREBASE_CONFIG.apiKey.startsWith('PASTE')){$('#who').textContent='Setup needed: paste your Firebase config at the top of the script (see the setup steps).';return}
+  firebase.initializeApp(FIREBASE_CONFIG);
+  try{uid=localStorage.getItem('sky-id');if(!uid){uid='u'+Math.random().toString(36).slice(2);localStorage.setItem('sky-id',uid)}}catch(e){uid='u'+Math.random().toString(36).slice(2)}
+  await firebase.auth().signInAnonymously();
+  db=firebase.firestore();
+  const er=e=>toast('Connection trouble: '+((e&&e.message)||e));
+  db.doc('sky/state').onSnapshot(s=>{S=s.exists?s.data():null;render()},er);
+  db.doc('puzzle/cur').onSnapshot(s=>{P=s.exists?s.data():null;renderPlay()},er);
+  db.collection('notes').orderBy('t','desc').limit(15).onSnapshot(q=>{notes=q.docs.map(x=>x.data());renderLetters()},er);
+  db.collection('memories').onSnapshot(q=>{mems={};q.docs.forEach(x=>mems[x.id]=x.data());renderMem()},er);
+  db.collection('presence').onSnapshot(q=>{pres={};q.docs.forEach(x=>pres[x.id]=x.data());renderHead()},er);
+  const beat=()=>{if(me)db.doc('presence/'+me).set({t:Date.now()}).catch(()=>{})};
+  setInterval(beat,20000);setInterval(renderHead,10000);setTimeout(beat,2500);
+ }catch(e){$('#who').textContent='Could not reach the sky: '+((e&&e.message)||e)}
+})();
+</script></body></html>
